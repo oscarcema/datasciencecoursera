@@ -1,8 +1,0 @@
-complete<-function(directory,id=1:332){
-  f <- function(i) {
-    data = read.csv(sprintf("/%s/%03d.csv", directory, i), head=F, sep=",")
-    sum(complete.cases(data)) #count the numer of complete cases
-  }
-  nobs = sapply(id, f)
-  return(data.frame(id, nobs))
-}
