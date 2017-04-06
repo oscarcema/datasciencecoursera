@@ -1,98 +1,83 @@
-#1. Install and load packages required
-if (!require("data.table")) {
-  install.packages("data.table")
+if (!require("plyr")) {
+  install.packages("plyr")
 }
+library("plyr")
 
-if (!require("reshape2")) {
-  install.packages("reshape2")
-}
+#Set Working Directory
+setwd("./R/data/UCI HAR Dataset/")
 
-require("data.table")
-require("reshape2")
+#1. Merge the train and the test data.
 
-#2. Set work directory
-setwd("R/data/UCI HAR Dataset/")
+#Load features (considering only the second column)
+features        <- read.table("./features.txt",header=FALSE)[,2]
 
+#Load train data
+subjectTrain    <-read.table("./train/subject_train.txt", header=FALSE)
+xTrain          <- read.table("./train/X_train.txt", header=FALSE)
+yTrain          <- read.table("./train/y_train.txt", header=FALSE)
 
+#Assign column names to the data above
+colnames(subjectTrain) <- "subjectId"
+colnames(xTrain) <- features
+colnames(yTrain) <- "activityId"
 
-#3. Load: data column names of each measure processed
-features <- read.table("./features.txt",header=FALSE)[,2]
-# Extract only the measurements on the mean and standard deviation for each measurement.
-meanANDstd_features <- grepl("mean|std", features)
+#Merging train Data
+trainData <- cbind(yTrain,subjectTrain,xTrain)
 
-#4. Load: activity labels(name of the activities performed by the volunteers)
-activitylabels <- read.table("./activity_labels.txt",header=FALSE)[,2]
+#Load test Data
+subjectTest    <-read.table("./test/subject_test.txt", header=FALSE)
+xTest         <- read.table("./test/X_test.txt", header=FALSE)
+yTest         <- read.table("./test/y_test.txt", header=FALSE)
 
-#***Load and process test data**
+# Assign column names.. same as for training data..
+colnames(subjectTest) <- "subjectId"
+colnames(xTest) <- features
+colnames(yTest) <- "activityId"
 
-#5.1. Load and process X_test data.
-X_test <- read.table("./test/X_test.txt")
-#5.1.1. Load the subject who performed the tests
-subject_test <- read.table("./test/subject_test.txt")
+# merging test Data
+testData <- cbind(yTest,subjectTest,xTest)
 
-#5.1.2 Set the variable names to X_test dataset based on the features
-names(X_test) = features
+#final merged data
+finalData <- rbind(trainData,testData)
 
-# 5.1.3. Extract only the measurements on the mean and standard deviation for each measurement.
-X_test <- X_test[,meanANDstd_features]
+# 2. Extract only the measurements on the mean and standard deviation for each measurement
+data_mean_std <-finalData[,grepl("mean|std|subjectId|activityId",colnames(finalData))]
 
-#5.2. Load and process y_test data.
-y_test <- read.table("./test/y_test.txt")
-#5.2.1 Add the label name related to the y_test column position
-y_test[,2] = activitylabels[y_test[,1]]
-#5.2.2 Set the column names to y_test
-names(y_test) = c("Activity_ID", "Activity_Label")
+#3. #Uses descriptive activity names to name the activities in the data set
+#Load & Assign column names to activityLabel table 
+activityLabel   <- read.table("./activity_labels.txt",header=FALSE)
+colnames(activityLabel)<-c("activityId","activityType")
+#Join  activityLabel to data_mean_std by activityId (so we can see the activityType column)
+data_mean_std <- join(data_mean_std, activityLabel, by = "activityId", match = "first")
+#Remove the column activityId from data_mean_std table
+data_mean_std <-data_mean_std[,-1]
 
-#5.3. Set the column name to subject_test
-names(subject_test) = "subject"
+# #CODE BOOK Part1: creating a vector for the original column names
+# OriginalColNames <- colnames(data_mean_std);
 
-#5.4  Bind data
-test_data <- cbind(as.data.table(subject_test), y_test, X_test)
+#4. Appropriately labels the data set with descriptive variable names.
+#Remove parentheses
+names(data_mean_std) <- gsub("\\(|\\)", "", names(data_mean_std), perl  = TRUE)
+#correct syntax in names
+names(data_mean_std) <- make.names(names(data_mean_std))
 
+#add descriptive names
+names(data_mean_std) <- gsub("Acc", "Acceleration", names(data_mean_std))
+names(data_mean_std) <- gsub("^t", "Time", names(data_mean_std))
+names(data_mean_std) <- gsub("^f", "Frequency", names(data_mean_std))
+names(data_mean_std) <- gsub("BodyBody", "Body", names(data_mean_std))
+names(data_mean_std) <- gsub("mean", "Mean", names(data_mean_std))
+names(data_mean_std) <- gsub("std", "Std", names(data_mean_std))
+names(data_mean_std) <- gsub("MeanFreq", "MeanFrequency", names(data_mean_std))
+names(data_mean_std) <- gsub("Mag", "Magnitude", names(data_mean_std))
 
-# *** Load and process train data ***
-#6.1 Load and process X_train & y_train data.
-X_train <- read.table("./train/X_train.txt")
-
-#6.1.1. Load the subject who performed the tests
-subject_train <- read.table("./train/subject_train.txt")
-
-#6.1.2 Set the variable names to X_test dataset based on the features
-names(X_train) = features
-
-#6.1.3. Extract only the measurements on the mean and standard deviation for each measurement.
-X_train = X_train[,meanANDstd_features]
-
-#6.2. Load and process y_train data.
-y_train <- read.table("./train/y_train.txt")
-#6.2.1 Add the label name related to the y_train column position
-y_train[,2] = activitylabels[y_train[,1]]
-#6.2.2 Set the column names to y_test
-names(y_train) = c("Activity_ID", "Activity_Label")
-
-#6.3. Set the column name to subject_tran
-names(subject_train) = "subject"
-
-#6.4 Bind data
-train_data <- cbind(as.data.table(subject_train), y_train, X_train)
-
-
-#7. Merge test and train data
-data = rbind(test_data, train_data)
-
-#.8 Melt the data (5 columns: subject,Activity_ID,Activity_Label,variable & value)
-id_labels   = c("subject", "Activity_ID", "Activity_Label")
-data_labels = setdiff(colnames(data), id_labels)
-melt_data      = melt(data, id = id_labels, measure.vars = data_labels)
-
-#9. Get the mean of each variable
-tidy_data   = dcast(melt_data, subject + Activity_Label ~ variable, mean)
-
-#10. Export the tidy data
-write.table(tidy_data, file = "./tidy_data.txt")
-
-
-
-
-
-
+#5. Creates a second tidy data set with the average of each variable for each activity and each subject.
+averaged_tidydata<- ddply(data_mean_std, c("subjectId","activityType"), numcolwise(mean))
+#Export to tidyData.txt file
+write.table(averaged_tidydata,file="tidyData.txt", row.names = FALSE)
+# 
+# #CODE BOOK Part2: creating a vector for the description names
+# describedColNames <- colnames(data_mean_std
+# describedColNames[1]="Subject identifier who performed the measured activities"
+# describedColNames[81]="Activity name performed by the volunteers"
+# write.table(cbind(OriginalColNames,describedColNames),file="codeBook.md")
