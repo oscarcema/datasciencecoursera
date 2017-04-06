@@ -1,4 +1,11 @@
-"OriginalColNames" "describedColNames"
+Attribute Information:
+
+For each record in the dataset it is provided: 
+- An identifier of the subject who carried out the experiment.
+- 79 features with time and frequency mean/std deviation variables averaged by activity and subject
+- Its activity label (activityType). 
+
+Pos, OriginalColNames, describedColNames
 "1" "subjectId" "Subject identifier who performed the measured activities"
 "2" "tBodyAcc-mean()-X" "TimeBodyAcceleration.Mean.X"
 "3" "tBodyAcc-mean()-Y" "TimeBodyAcceleration.Mean.Y"
